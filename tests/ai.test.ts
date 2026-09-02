@@ -84,9 +84,14 @@ describe('普通难度', () => {
 });
 
 describe('困难难度', () => {
+  // 困难 AI 使用时间预算时搜索深度会随负载浮动，
+  // 功能性断言统一传 Infinity（深度恒为 13）以获得确定性行为
+  const hard = (board: Parameters<typeof chooseMove>[0], player: Parameters<typeof chooseMove>[1], rng = seededRng(7)) =>
+    chooseMove(board, player, 'hard', rng, { hardTimeBudgetMs: Infinity });
+
   it('开局首选中路', () => {
-    expect(chooseMove(createBoard(), 1, 'hard', seededRng(7))).toBe(3);
-  });
+    expect(hard(createBoard(), 1)).toBe(3);
+  }, 120000);
 
   it('能连四时立即取胜（纵向）', () => {
     const board = boardFrom([
@@ -97,8 +102,8 @@ describe('困难难度', () => {
       '..Y....',
       '..Y....',
     ]);
-    expect(chooseMove(board, 2, 'hard', seededRng(7))).toBe(2);
-  });
+    expect(hard(board, 2)).toBe(2);
+  }, 120000);
 
   it('能封堵对手横向三连', () => {
     const board = boardFrom([
@@ -109,8 +114,8 @@ describe('困难难度', () => {
       '.......',
       'RRR.Y..',
     ]);
-    expect(chooseMove(board, 2, 'hard', seededRng(7))).toBe(3);
-  });
+    expect(hard(board, 2)).toBe(3);
+  }, 120000);
 
   it('能找到制造双向威胁的两步制胜', () => {
     // 黄方落第 3 列后，第 5 行形成 1-3 三连，左右（第 0、4 列）皆可成四，
@@ -123,10 +128,10 @@ describe('困难难度', () => {
       '.......',
       '.YY..RR',
     ]);
-    expect(chooseMove(board, 2, 'hard', seededRng(3))).toBe(3);
-  });
+    expect(hard(board, 2, seededRng(3))).toBe(3);
+  }, 120000);
 
-  it('空棋盘上的搜索耗时可接受', () => {
+  it('空棋盘上的搜索耗时可接受（默认 900ms 时间预算）', () => {
     const board = createBoard();
     const start = performance.now();
     const col = chooseMove(board, 1, 'hard', seededRng(5));
@@ -144,12 +149,15 @@ describe('难度分层（AI 对战 AI，随机种子确定化）', () => {
     seed: number,
   ): { winner: Player | null; moves: number } {
     const rng = seededRng(seed);
+    // 困难 AI 固定深度 11 且不限时，保证对局结果不随机器负载浮动
+    const optionsFor = (d: 'easy' | 'medium' | 'hard') =>
+      d === 'hard' ? { hardTimeBudgetMs: Infinity, hardMaxDepth: 11 } : undefined;
     let board: Board = createBoard();
     let turn: Player = 1;
     let moves = 0;
     for (;;) {
       const difficulty = turn === 1 ? first : second;
-      const col = chooseMove(board, turn, difficulty, rng);
+      const col = chooseMove(board, turn, difficulty, rng, optionsFor(difficulty));
       const moved = applyMove(board, col, turn);
       expect(moved).not.toBeNull();
       board = moved!.board;
@@ -164,17 +172,17 @@ describe('难度分层（AI 对战 AI，随机种子确定化）', () => {
   it('普通 AI 战胜简单 AI', () => {
     const { winner } = selfPlay('medium', 'easy', 11);
     expect(winner).toBe(1);
-  });
+  }, 60000);
 
-  it('困难 AI 执后手也能战胜简单 AI', () => {
-    const { winner } = selfPlay('easy', 'hard', 42);
-    expect(winner).toBe(2);
-  }, 120000);
+  it('困难 AI 先手、后手均战胜简单 AI', () => {
+    expect(selfPlay('hard', 'easy', 42).winner).toBe(1);
+    expect(selfPlay('easy', 'hard', 42).winner).toBe(2);
+  }, 180000);
 
-  it('困难 AI 对普通 AI 保持不败（胜或平，多组种子）', () => {
+  it('困难 AI 对普通 AI 六战全胜（先/后手 × 三组种子）', () => {
     for (const seed of [23, 37, 101]) {
-      expect(selfPlay('hard', 'medium', seed).winner).not.toBe(2);
-      expect(selfPlay('medium', 'hard', seed).winner).not.toBe(1);
+      expect(selfPlay('hard', 'medium', seed).winner).toBe(1);
+      expect(selfPlay('medium', 'hard', seed).winner).toBe(2);
     }
   }, 300000);
 });

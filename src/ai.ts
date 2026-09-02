@@ -1,4 +1,5 @@
 import {
+  COLS,
   ROWS,
   WIN_LINES,
   applyMove,
@@ -17,8 +18,18 @@ export type Rng = () => number;
 export const MEDIUM_DEPTH = 2;
 /** 困难难度：迭代加深的最大深度，实际会受时间预算约束 */
 export const HARD_MAX_DEPTH = 13;
-/** 困难难度单步搜索的时间预算（毫秒），防止中盘思考过久 */
+/** 困难难度单步搜索的默认时间预算（毫秒），防止中盘思考过久 */
 export const HARD_TIME_BUDGET_MS = 900;
+
+export interface MoveOptions {
+  /**
+   * 困难难度单步搜索的时间预算（毫秒）。
+   * 时间预算会让实际搜索深度随机器负载浮动；需要确定性行为时（如测试）可传 Infinity。
+   */
+  hardTimeBudgetMs?: number;
+  /** 困难难度最大搜索深度（默认 HARD_MAX_DEPTH） */
+  hardMaxDepth?: number;
+}
 
 /** 为当前局面选择落子列；无子可下时返回 -1 */
 export function chooseMove(
@@ -26,12 +37,13 @@ export function chooseMove(
   player: Player,
   difficulty: Difficulty,
   rng: Rng = Math.random,
+  options: MoveOptions = {},
 ): number {
   const moves = getValidMoves(board);
   if (moves.length === 0) return -1;
   if (difficulty === 'easy') return chooseEasy(board, player, moves, rng);
   if (difficulty === 'medium') return searchPlain(board, player, MEDIUM_DEPTH, rng);
-  return searchHard(board, player, rng);
+  return searchHard(board, player, rng, options.hardTimeBudgetMs ?? HARD_TIME_BUDGET_MS, options.hardMaxDepth ?? HARD_MAX_DEPTH);
 }
 
 /** 简单难度：随机落子，但不会放过已经凑成三缺一的机会 */
@@ -66,21 +78,31 @@ function scorePosition(board: Board, player: Player): number {
     else if (v === opponent) score -= 6;
   }
 
-  // 统计所有四格窗口中双方棋子的分布
+  // 统计所有四格窗口中双方棋子的分布。
+  // 三缺一的"威胁"按威胁点所在行高区分价值：僵持到残局时双方都无法立即成四，
+  // 行高奇偶决定谁被迫先垫子——先手方（1 号）受益于奇数行威胁，后手方（2 号）受益于偶数行威胁
   for (const line of WIN_LINES) {
     let mine = 0;
     let theirs = 0;
+    let emptyIdx = -1;
     for (let k = 0; k < 4; k++) {
       const v = board[line[k]];
       if (v === player) mine++;
       else if (v === opponent) theirs++;
+      else emptyIdx = line[k];
     }
     if (mine > 0 && theirs > 0) continue; // 混合窗口已无威胁
-    if (mine === 3) score += 60;
-    else if (mine === 2) score += 8;
+    if (mine === 3) {
+      const oddRow = Math.floor(emptyIdx / COLS) % 2 === 1; // 威胁点在从底数第奇数行
+      const favorable = player === 1 ? oddRow : !oddRow;
+      score += favorable ? 90 : 40;
+    } else if (mine === 2) score += 8;
     else if (mine === 1) score += 1;
-    if (theirs === 3) score -= 75;
-    else if (theirs === 2) score -= 9;
+    if (theirs === 3) {
+      const oddRow = Math.floor(emptyIdx / COLS) % 2 === 1;
+      const oppFavorable = opponent === 1 ? oddRow : !oddRow;
+      score -= oppFavorable ? 100 : 60;
+    } else if (theirs === 2) score -= 9;
     else if (theirs === 1) score -= 1;
   }
   return score;
@@ -261,13 +283,13 @@ function searchPlain(board: Board, player: Player, depth: number, rng: Rng): num
 }
 
 /** 困难难度：迭代加深 + 置换表 + 时间预算；按上一轮得分排序走子以加强剪枝 */
-function searchHard(board: Board, player: Player, rng: Rng): number {
-  deadline = Date.now() + HARD_TIME_BUDGET_MS;
+function searchHard(board: Board, player: Player, rng: Rng, budgetMs: number, maxDepth: number): number {
+  deadline = Date.now() + budgetMs;
   let results: { col: number; score: number }[] = orderMoves(getValidMoves(board)).map((col) => ({
     col,
     score: -Infinity,
   }));
-  for (let depth = 2; depth <= HARD_MAX_DEPTH; depth++) {
+  for (let depth = 2; depth <= maxDepth; depth++) {
     const ordered = [...results].sort((x, y) => y.score - x.score).map((r) => r.col);
     try {
       results = evaluateRoot(board, player, ordered, depth);
