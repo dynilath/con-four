@@ -13,6 +13,7 @@ import {
   type Player,
 } from './game';
 import { chooseMove, type Difficulty } from './ai';
+import { detectLanguage, formatScore, getMessages, isLang, type Lang, type Messages } from './i18n';
 
 const HUMAN: Player = 1; // 红方
 const AI: Player = 2; // 黄方
@@ -22,6 +23,7 @@ const ghostRowEl = document.getElementById('ghost-row') as HTMLElement;
 const statusEl = document.getElementById('status') as HTMLElement;
 const difficultyEl = document.getElementById('difficulty') as HTMLSelectElement;
 const firstPlayerEl = document.getElementById('first-player') as HTMLSelectElement;
+const languageEl = document.getElementById('language') as HTMLSelectElement;
 const newGameBtn = document.getElementById('new-game') as HTMLButtonElement;
 const scoreEl = document.getElementById('score') as HTMLElement;
 
@@ -52,6 +54,56 @@ let gameId = 0;
     ghostRowEl.appendChild(slot);
   }
 })();
+
+// ---------- 界面语言（自动检测 + 手动切换） ----------
+
+const LANG_KEY = 'con-four-lang';
+
+function readStoredLang(): string | null {
+  try {
+    return localStorage.getItem(LANG_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function navigatorLanguages(): string[] {
+  const langs = navigator.languages;
+  if (langs && langs.length > 0) return [...langs];
+  return [navigator.language];
+}
+
+let lang: Lang = detectLanguage(readStoredLang(), navigatorLanguages());
+
+function applyStaticI18n() {
+  const msg = getMessages(lang);
+  document.documentElement.lang = lang;
+  document.title = msg.title;
+  for (const el of document.querySelectorAll<HTMLElement>('[data-i18n]')) {
+    const key = el.dataset.i18n as keyof Messages;
+    const text = msg[key];
+    if (text !== undefined) el.textContent = text;
+  }
+  for (const el of document.querySelectorAll<HTMLElement>('[data-i18n-title]')) {
+    const key = el.dataset.i18nTitle as keyof Messages;
+    const text = msg[key];
+    if (text !== undefined) el.title = text;
+  }
+}
+
+languageEl.addEventListener('change', () => {
+  const next = languageEl.value;
+  if (!isLang(next) || next === lang) return;
+  lang = next;
+  try {
+    localStorage.setItem(LANG_KEY, lang);
+  } catch {
+    // 写不进去也不影响本次界面的切换
+  }
+  applyStaticI18n();
+  renderScore();
+  setStatus(lastStatus);
+});
 
 // ---------- 比分（本地保存） ----------
 
@@ -87,14 +139,37 @@ function saveScore() {
 }
 
 function renderScore() {
-  scoreEl.textContent = `你 ${score.win} : ${score.loss} AI · 平 ${score.draw}`;
+  scoreEl.textContent = formatScore(lang, score.win, score.loss, score.draw);
 }
 
 // ---------- 状态提示 ----------
 
-function setStatus(text: string, kind: 'human' | 'ai' | 'win' | 'lose' | 'draw') {
-  statusEl.textContent = text;
-  statusEl.className = `status ${kind}`;
+type StatusKey = 'turn' | 'thinking' | 'new' | 'win' | 'lose' | 'draw';
+
+const STATUS_CLASS: Record<StatusKey, string> = {
+  turn: 'human',
+  thinking: 'ai',
+  new: 'human',
+  win: 'win',
+  lose: 'lose',
+  draw: 'draw',
+};
+
+const STATUS_MESSAGE: Record<StatusKey, keyof Messages> = {
+  turn: 'statusTurn',
+  thinking: 'statusThinking',
+  new: 'statusNew',
+  win: 'statusWin',
+  lose: 'statusLose',
+  draw: 'statusDraw',
+};
+
+let lastStatus: StatusKey = 'new';
+
+function setStatus(key: StatusKey) {
+  lastStatus = key;
+  statusEl.textContent = getMessages(lang)[STATUS_MESSAGE[key]];
+  statusEl.className = `status ${STATUS_CLASS[key]}`;
 }
 
 // ---------- 落子与动画 ----------
@@ -155,13 +230,13 @@ async function playMove(col: number, player: Player): Promise<void> {
   current = opponentOf(player);
   busy = false;
   if (current === AI) scheduleAiMove();
-  else setStatus('轮到你了 · 红子', 'human');
+  else setStatus('turn');
 }
 
 function scheduleAiMove() {
   const token = gameId;
   busy = true;
-  setStatus('AI 思考中…', 'ai');
+  setStatus('thinking');
   const difficulty = difficultyEl.value as Difficulty;
   const delay = 300 + Math.random() * 350;
   setTimeout(() => {
@@ -180,14 +255,14 @@ function finish(result: GameResult) {
     for (const i of result.line) discs[i]?.classList.add('win-disc');
     if (result.winner === HUMAN) {
       score.win++;
-      setStatus('🎉 恭喜，你连成四子获胜！', 'win');
+      setStatus('win');
     } else {
       score.loss++;
-      setStatus('AI 连成四子，这局输了', 'lose');
+      setStatus('lose');
     }
   } else {
     score.draw++;
-    setStatus('🤝 棋盘已满，平局', 'draw');
+    setStatus('draw');
   }
   saveScore();
   renderScore();
@@ -265,11 +340,13 @@ function newGame() {
   if (current === AI) {
     scheduleAiMove();
   } else {
-    setStatus('新对局开始 · 你执红先行', 'human');
+    setStatus('new');
   }
 }
 
 newGameBtn.addEventListener('click', newGame);
 
+languageEl.value = lang;
+applyStaticI18n();
 renderScore();
 newGame();

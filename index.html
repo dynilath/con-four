@@ -4,43 +4,51 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>重力四子棋 · Connect Four</title>
+    <title data-i18n="title">重力四子棋 · Connect Four</title>
   </head>
   <body>
     <main class="app">
       <header class="app-header">
-        <h1>重力四子棋</h1>
-        <p class="subtitle">Connect Four · 6×7 棋盘 · 人机对战</p>
+        <h1 data-i18n="appTitle">重力四子棋</h1>
+        <p class="subtitle" data-i18n="subtitle">Connect Four · 6×7 棋盘 · 人机对战</p>
       </header>
 
       <section class="controls card">
         <label class="control">
-          <span>AI 难度</span>
-          <select id="difficulty" title="切换后对 AI 的下一步落子立即生效">
-            <option value="easy">简单</option>
-            <option value="medium">普通</option>
-            <option value="hard" selected>困难</option>
+          <span data-i18n="difficultyLabel">AI 难度</span>
+          <select id="difficulty" data-i18n-title="difficultyTitle" title="切换后对 AI 的下一步落子立即生效">
+            <option value="easy" data-i18n="difficultyEasy">简单</option>
+            <option value="medium" data-i18n="difficultyMedium">普通</option>
+            <option value="hard" selected data-i18n="difficultyHard">困难</option>
           </select>
         </label>
         <label class="control">
-          <span>先手方</span>
-          <select id="first-player" title="点击「新对局」时生效">
-            <option value="human" selected>我（红）</option>
-            <option value="ai">AI（黄）</option>
+          <span data-i18n="firstPlayerLabel">先手方</span>
+          <select id="first-player" data-i18n-title="firstPlayerTitle" title="点击「新对局」时生效">
+            <option value="human" selected data-i18n="firstHuman">我（红）</option>
+            <option value="ai" data-i18n="firstAi">AI（黄）</option>
           </select>
         </label>
-        <button id="new-game" class="btn primary" type="button">新对局</button>
-        <div class="score" id="score" title="你 : AI（平局数）">你 0 : 0 AI · 平 0</div>
+        <label class="control">
+          <span data-i18n="languageLabel">语言</span>
+          <select id="language">
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+            <option value="ja">日本語</option>
+          </select>
+        </label>
+        <button id="new-game" class="btn primary" type="button" data-i18n="newGame">新对局</button>
+        <div class="score" id="score" data-i18n-title="scoreTitle" title="你 : AI（平局数）">你 0 : 0 AI · 平 0</div>
       </section>
 
       <section class="status human" id="status">轮到你了 · 红子</section>
 
       <section class="board-zone">
         <div class="ghost-row" id="ghost-row" aria-hidden="true"></div>
-        <div class="board" id="board" title="点击某一列落下棋子"></div>
+        <div class="board" id="board" data-i18n-title="boardTitle" title="点击某一列落下棋子"></div>
       </section>
 
-      <footer class="hint">棋子从顶部投入后落至该列最底部 · 横、竖、斜先连成四子者获胜</footer>
+      <footer class="hint" data-i18n="hint">棋子从顶部投入后落至该列最底部 · 横、竖、斜先连成四子者获胜</footer>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
