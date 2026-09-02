@@ -99,6 +99,10 @@ function setStatus(text: string, kind: 'human' | 'ai' | 'win' | 'lose' | 'draw')
 
 // ---------- 落子与动画 ----------
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function animateDrop(disc: HTMLElement, row: number): Promise<void> {
   const dropHeight = (row + 1.15) * 100;
   const fall = disc.animate(
@@ -139,7 +143,8 @@ async function playMove(col: number, player: Player): Promise<void> {
   disc.className = `disc p${player}`;
   cells[idx(moved.row, col)].appendChild(disc);
   discs[idx(moved.row, col)] = disc;
-  await animateDrop(disc, moved.row);
+  // 后台标签页等场景下动画 Promise 可能长时间不 settle，用超时兜底保证回合继续
+  await Promise.race([animateDrop(disc, moved.row), sleep(1500)]);
   if (token !== gameId) return; // 期间开了新对局，丢弃本轮结果
 
   const result = getGameResult(board);
