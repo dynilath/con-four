@@ -31,6 +31,7 @@ export interface Messages {
   statusDraw: string;
   boardTitle: string;
   hint: string;
+  repoLink: string;
 }
 
 const MESSAGES: Record<Lang, Messages> = {
@@ -59,6 +60,7 @@ const MESSAGES: Record<Lang, Messages> = {
     statusDraw: '🤝 Board is full — it’s a draw',
     boardTitle: 'Click a column to drop your disc',
     hint: 'Discs fall to the lowest empty cell of the column · connect four in a row (horizontal, vertical or diagonal) to win',
+    repoLink: 'View source on GitHub',
   },
   zh: {
     title: '重力四子棋 · Connect Four',
@@ -85,6 +87,7 @@ const MESSAGES: Record<Lang, Messages> = {
     statusDraw: '🤝 棋盘已满，平局',
     boardTitle: '点击某一列落下棋子',
     hint: '棋子从顶部投入后落至该列最底部 · 横、竖、斜先连成四子者获胜',
+    repoLink: '在 GitHub 查看源码',
   },
   ja: {
     title: '重力コネクトフォー',
@@ -111,6 +114,7 @@ const MESSAGES: Record<Lang, Messages> = {
     statusDraw: '🤝 盤面がいっぱいになりました。引き分け',
     boardTitle: '列をクリックしてコマを落とします',
     hint: 'コマは選んだ列の一番下まで落ちます · 縦・横・ななめのいずれかで先に4つ並べたら勝ち',
+    repoLink: 'GitHub でソースを表示',
   },
 };
 
