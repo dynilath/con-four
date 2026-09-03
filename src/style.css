@@ -10,11 +10,20 @@
   --board-1: #2563eb;
   --board-2: #1e3a8a;
   --hole: #0b1220;
-  --board-w: min(560px, 100%);
+  /* 单格边长：桌面 76px 封顶，随视口宽度收缩；棋盘尺寸由它显式计算。
+     不用 aspect-ratio（旧版 iOS / Android WebView 不支持，棋盘会塌陷），
+     24px 为棋盘左右内边距。 */
+  --cell: min(76px, calc((96vw - 24px) / 7));
+  --board-w: calc(var(--cell) * 7 + 24px);
 }
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html,
@@ -41,6 +50,13 @@ body {
     radial-gradient(1100px 700px at 50% -10%, var(--bg-1) 0%, transparent 70%),
     linear-gradient(180deg, #0b1220 0%, #0a0f1c 100%);
   background-attachment: fixed;
+}
+
+/* iOS 对 background-attachment: fixed 的渲染有兼容问题，触屏设备改随内容滚动 */
+@media (pointer: coarse) {
+  body {
+    background-attachment: scroll;
+  }
 }
 
 .app {
@@ -187,7 +203,7 @@ select:focus-visible,
 
 .board {
   width: var(--board-w);
-  aspect-ratio: 7 / 6;
+  height: calc(var(--cell) * 6 + 24px);
   padding: 12px;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -199,6 +215,8 @@ select:focus-visible,
     inset 0 2px 0 rgba(255, 255, 255, 0.18);
   cursor: pointer;
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -250,7 +268,7 @@ select:focus-visible,
   inset: auto;
   left: 6%;
   width: 88%;
-  aspect-ratio: 1;
+  height: calc(var(--cell) * 0.88);
   top: 50%;
   transform: translateY(-50%);
 }
@@ -284,7 +302,19 @@ select:focus-visible,
   letter-spacing: 0.5px;
 }
 
+/* iOS：表单控件字号小于 16px 时，聚焦下拉框会触发页面自动放大，破坏排版 */
+@media (pointer: coarse) {
+  select,
+  .btn {
+    font-size: 16px;
+  }
+}
+
 @media (max-width: 480px) {
+  .app {
+    gap: 10px;
+  }
+
   .app-header h1 {
     font-size: 24px;
     letter-spacing: 3px;
@@ -300,5 +330,45 @@ select:focus-visible,
 
   .score {
     margin-left: 0;
+  }
+}
+
+/* 手机横屏：纵向空间不足，压缩间距并按视口高度收缩棋盘，避免整页滚动 */
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --cell: min(76px, calc((96vw - 24px) / 7), calc((100vh - 270px) / 6));
+  }
+
+  .app {
+    gap: 8px;
+    padding: 10px 0 16px;
+  }
+
+  .app-header h1 {
+    font-size: 20px;
+    letter-spacing: 2px;
+  }
+
+  .subtitle,
+  .hint,
+  .page-footer {
+    display: none;
+  }
+
+  .card {
+    padding: 8px 12px;
+  }
+
+  .controls {
+    gap: 8px 12px;
+  }
+
+  .status {
+    min-height: 22px;
+    font-size: 15px;
+  }
+
+  .ghost-row {
+    height: 30px;
   }
 }
